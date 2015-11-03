@@ -1,7 +1,9 @@
 #include "stdafx.h"
 #include "Cipher.h"
 
-/*AffineCipher*/
+/**********************************************/
+/*--------------AffineCipher------------------*/
+/**********************************************/
 AffineCipher::AffineCipher()
 {
 	inverseFactor = 0;
@@ -57,181 +59,10 @@ void AffineCipher::ExtendEculid(int x, int y)
 /**********************************************/
 
 
-/*HillCipher*/
-HillCipher::HillCipher() {
-	maxDimensionSize = 2;
-	//int arr[2][2] = { {11, 8}, {3, 7} };
-	encryptMatrix = new int*[maxDimensionSize];
-	decipherMatrix = new int*[maxDimensionSize];
-	codesUnit = new int*;
-	codesUnit[0] = new int[maxDimensionSize];
-	for (int j = 0; j < maxDimensionSize; j++) {
-		encryptMatrix[j] = new int[maxDimensionSize];
-		decipherMatrix[j] = new int[maxDimensionSize];
-	}
-	srand((unsigned int)time(nullptr));
-	do {
-		for (int i = 0; i < maxDimensionSize*maxDimensionSize; i++)
-			encryptMatrix[i / maxDimensionSize][i % maxDimensionSize] = rand() % 26;
-			//encryptMatrix[i / maxDimensionSize][i % maxDimensionSize] = arr[i / maxDimensionSize][i % maxDimensionSize];
-	} 
-	while (det() != 1);
-	Inverse(encryptMatrix);
-	for (int i = 0; i < maxDimensionSize*maxDimensionSize; i++)
-		decipherMatrix[i / maxDimensionSize][i % maxDimensionSize] = 
-		Mod(decipherMatrix[i / maxDimensionSize][i % maxDimensionSize]);
-}
 
-string HillCipher::Encrypt(string text)
-{
-	string ciphertext;
-
-	//如果文本长度小于加密矩阵的行数，则补上冗余项
-	while ((int)text.size() % maxDimensionSize != 0)
-		text += (rand() % 26) + 'a';
-	
-	for (int turn = 0; turn < (int)text.size(); turn += maxDimensionSize) {
-		for (int i = 0; i < maxDimensionSize; i++)
-			codesUnit[0][i] = AlphabetToNum(text[turn + i]);
-		codesUnit = CodesUnit_Mul_EncryptMatrix();
-		for (int i = 0; i < maxDimensionSize; i++)
-			ciphertext += NumToAlphabet(codesUnit[0][i]);
-	}
-	return ciphertext;
-}
-
-string HillCipher::Decipher(string ciphertext)
-{
-	string text;
-	for (int turn = 0; turn < (int)ciphertext.size(); turn += maxDimensionSize) {
-		for (int i = 0; i < maxDimensionSize; i++)
-			codesUnit[0][i] = AlphabetToNum(ciphertext[turn + i]);
-		codesUnit = CodesUnit_Mul_DecipherMatrix();
-		for (int i = 0; i < maxDimensionSize; i++)
-			text += NumToAlphabet(codesUnit[0][i]);
-	}
-	return text;
-}
-matrix HillCipher::CodesUnit_Mul_EncryptMatrix()
-{
-	matrix mul;
-	mul = new int*;
-	mul[0] = new int[maxDimensionSize];
-	mul[0][0] = (codesUnit[0][0] * encryptMatrix[0][0] + codesUnit[0][1] * encryptMatrix[1][0])%26;
-	mul[0][1] = (codesUnit[0][0] * encryptMatrix[0][1] + codesUnit[0][1] * encryptMatrix[1][1])%26;
-	return mul;
-}
-
-matrix HillCipher::CodesUnit_Mul_DecipherMatrix()
-{
-	matrix mul;
-	mul = new int*;
-	mul[0] = new int[maxDimensionSize];
-	mul[0][0] = (codesUnit[0][0] * decipherMatrix[0][0] + codesUnit[0][1] * decipherMatrix[1][0])%26;
-	mul[0][1] = (codesUnit[0][0] * decipherMatrix[0][1] + codesUnit[0][1] * decipherMatrix[1][1])%26;
-	return mul;
-}
-
-void HillCipher::Inverse(matrix tempMatrix)
-{
-	matrix subMatrix = new int*[maxDimensionSize];
-	for (int i = 0; i < maxDimensionSize; i++)
-		subMatrix[i] = new int[maxDimensionSize];
-	for (int i = 0; i < maxDimensionSize; i++)
-		for (int j = 0; j < maxDimensionSize; j++)
-			subMatrix[i][j] = tempMatrix[i][j];
-
-	for (int i = 0; i < maxDimensionSize; i++)
-		for (int j = 0; j < maxDimensionSize; j++)
-			if (i != j) decipherMatrix[i][j] = 0;
-			else decipherMatrix[i][j] = 1;
-
-	//up-tangle
-	for (int k = maxDimensionSize - 1; k> 0; k--) {
-		for (int i = k - 1; i >= 0; i--) {
-			int temp1 = tempMatrix[k][k];
-			int temp2 = tempMatrix[i][k];
-			for (int j = 0; j < maxDimensionSize; j++) {
-				decipherMatrix[i][j] = temp1 * decipherMatrix[i][j] - temp2 * decipherMatrix[k][j];
-				tempMatrix[i][j] = temp1 * tempMatrix[i][j] - temp2 * tempMatrix[k][j];
-			}
-		}
-	}
-	//down-tangle
-	for (int k = 0; k < maxDimensionSize - 1; k++) {
-		for (int i = k + 1; i < maxDimensionSize; i++) {
-			int temp1 = tempMatrix[k][k];
-			int temp2 = tempMatrix[i][k];
-			for (int j = 0; j < maxDimensionSize; j++) {
-				decipherMatrix[i][j] = temp1 * decipherMatrix[i][j] - temp2 * decipherMatrix[k][j];
-				tempMatrix[i][j] = temp1 * tempMatrix[i][j] - temp2 * tempMatrix[k][j];
-			}
-		}
-	}
-	for (int i = 0; i < maxDimensionSize; i++) {
-		int temp = 0;
-		for (int j = 0; j < maxDimensionSize - 1; j++) {
-			temp = Eculid(decipherMatrix[i][j], decipherMatrix[i][j + 1]);
-		}
-		for (int j = 0; j < maxDimensionSize; j++)
-			decipherMatrix[i][j] /= abs(temp);
-	}
-	for (int i = 0; i < maxDimensionSize; i++)
-		for (int j = 0; j < maxDimensionSize; j++)
-			tempMatrix[i][j] = subMatrix[i][j];
-	
-	for (int i = 0; i < maxDimensionSize; i++)
-		delete[] subMatrix[i];
-	delete[] subMatrix;
-}
-
-void HillCipher::ExtendEculid(int x, int y, int &xi, int &yi)
-{
-	if (y == 0) {
-		xi = 0;
-		yi = 1;
-		return;
-	}
-	ExtendEculid(y, x%y, xi, yi);
-	int temp = yi;
-	yi = xi;
-	xi = temp - (x / y)*xi;
-	return;
-}
 /**********************************************/
-
-
-/*VernamCipher*/
-VernamCipher::VernamCipher()
-{
-	srand((unsigned int)time(nullptr));
-}
-
-void VernamCipher::CreateCipherKey(int size)
-{
-	for (int i = 0; i < (int)size; i++)
-		cipherKey += (rand() % 26) + 'a';
-}
-
-string VernamCipher::Encrypt(string text)
-{
-	string ciphertext;
-	for (int i = 0; i < (int)(int)text.size(); i++)
-		ciphertext += cipherKey[i%cipherKey.size()] ^ text[i];
-	return ciphertext;
-}
-
-string VernamCipher::Decipher(string ciphertext)
-{
-	string text;
-	for (int i = 0; i < (int)ciphertext.size(); i++)
-		text += cipherKey[i] ^ ciphertext[i];
-	return text;
-}
+/*--------------PlayfairCipher----------------*/
 /**********************************************/
-
-
-/*PlayfairCipher*/
 PlayfairCipher::PlayfairCipher(string encryptWord)
 {
 	encryptMatrix = new char*[5];
@@ -356,7 +187,10 @@ string PlayfairCipher::Decipher_2_Letters(int x1, int y1, int x2, int y2)
 /**********************************************/
 
 
-/*VigenereCipher*/
+
+/**********************************************/
+/*---------------VigenereCipher---------------*/
+/**********************************************/
 VigenereCipher::VigenereCipher(string encryptWord)
 {
 	encryptKey = encryptWord;
@@ -378,5 +212,185 @@ string VigenereCipher::Decipher(string ciphertext)
 		text += NumToAlphabet((AlphabetToNum(ciphertext[i]) -
 			AlphabetToNum(encryptKey[i % encryptKey.size()]) + 26) % 26);
 	return string(text);
+}
+/**********************************************/
+
+
+/**********************************************/
+/*------------VernamCipher--------------------*/
+/**********************************************/
+
+VernamCipher::VernamCipher()
+{
+	srand((unsigned int)time(nullptr));
+}
+
+void VernamCipher::CreateCipherKey(int size)
+{
+	for (int i = 0; i < (int)size; i++)
+		cipherKey += (rand() % 26) + 'a';
+}
+
+string VernamCipher::Encrypt(string text)
+{
+	string ciphertext;
+	for (int i = 0; i < (int)(int)text.size(); i++)
+		ciphertext += cipherKey[i%cipherKey.size()] ^ text[i];
+	return ciphertext;
+}
+
+string VernamCipher::Decipher(string ciphertext)
+{
+	string text;
+	for (int i = 0; i < (int)ciphertext.size(); i++)
+		text += cipherKey[i] ^ ciphertext[i];
+	return text;
+}
+/**********************************************/
+
+
+
+/**********************************************/
+/*--------------HillCipher--------------------*/
+/**********************************************/
+HillCipher::HillCipher() {
+	maxDimensionSize = 2;
+	//int arr[2][2] = { {11, 8}, {3, 7} };
+	encryptMatrix = new int*[maxDimensionSize];
+	decipherMatrix = new int*[maxDimensionSize];
+	codesUnit = new int*;
+	codesUnit[0] = new int[maxDimensionSize];
+	for (int j = 0; j < maxDimensionSize; j++) {
+		encryptMatrix[j] = new int[maxDimensionSize];
+		decipherMatrix[j] = new int[maxDimensionSize];
+	}
+	srand((unsigned int)time(nullptr));
+	do {
+		for (int i = 0; i < maxDimensionSize*maxDimensionSize; i++)
+			encryptMatrix[i / maxDimensionSize][i % maxDimensionSize] = rand() % 26;
+			//encryptMatrix[i / maxDimensionSize][i % maxDimensionSize] = arr[i / maxDimensionSize][i % maxDimensionSize];
+	} 
+	while (det() != 1);
+	Inverse(encryptMatrix);
+	for (int i = 0; i < maxDimensionSize*maxDimensionSize; i++)
+		decipherMatrix[i / maxDimensionSize][i % maxDimensionSize] = 
+		Mod(decipherMatrix[i / maxDimensionSize][i % maxDimensionSize]);
+}
+
+string HillCipher::Encrypt(string text)
+{
+	string ciphertext;
+
+	//濡傛灉鏂囨湰闀垮害灏忎簬鍔犲瘑鐭╅樀鐨勮鏁帮紝鍒欒ˉ涓婂啑浣欓」
+	while ((int)text.size() % maxDimensionSize != 0)
+		text += (rand() % 26) + 'a';
+	
+	for (int turn = 0; turn < (int)text.size(); turn += maxDimensionSize) {
+		for (int i = 0; i < maxDimensionSize; i++)
+			codesUnit[0][i] = AlphabetToNum(text[turn + i]);
+		codesUnit = CodesUnit_Mul_EncryptMatrix();
+		for (int i = 0; i < maxDimensionSize; i++)
+			ciphertext += NumToAlphabet(codesUnit[0][i]);
+	}
+	return ciphertext;
+}
+
+string HillCipher::Decipher(string ciphertext)
+{
+	string text;
+	for (int turn = 0; turn < (int)ciphertext.size(); turn += maxDimensionSize) {
+		for (int i = 0; i < maxDimensionSize; i++)
+			codesUnit[0][i] = AlphabetToNum(ciphertext[turn + i]);
+		codesUnit = CodesUnit_Mul_DecipherMatrix();
+		for (int i = 0; i < maxDimensionSize; i++)
+			text += NumToAlphabet(codesUnit[0][i]);
+	}
+	return text;
+}
+matrix HillCipher::CodesUnit_Mul_EncryptMatrix()
+{
+	matrix mul;
+	mul = new int*;
+	mul[0] = new int[maxDimensionSize];
+	mul[0][0] = (codesUnit[0][0] * encryptMatrix[0][0] + codesUnit[0][1] * encryptMatrix[1][0])%26;
+	mul[0][1] = (codesUnit[0][0] * encryptMatrix[0][1] + codesUnit[0][1] * encryptMatrix[1][1])%26;
+	return mul;
+}
+
+matrix HillCipher::CodesUnit_Mul_DecipherMatrix()
+{
+	matrix mul;
+	mul = new int*;
+	mul[0] = new int[maxDimensionSize];
+	mul[0][0] = (codesUnit[0][0] * decipherMatrix[0][0] + codesUnit[0][1] * decipherMatrix[1][0])%26;
+	mul[0][1] = (codesUnit[0][0] * decipherMatrix[0][1] + codesUnit[0][1] * decipherMatrix[1][1])%26;
+	return mul;
+}
+
+void HillCipher::Inverse(matrix tempMatrix)
+{
+	matrix subMatrix = new int*[maxDimensionSize];
+	for (int i = 0; i < maxDimensionSize; i++)
+		subMatrix[i] = new int[maxDimensionSize];
+	for (int i = 0; i < maxDimensionSize; i++)
+		for (int j = 0; j < maxDimensionSize; j++)
+			subMatrix[i][j] = tempMatrix[i][j];
+
+	for (int i = 0; i < maxDimensionSize; i++)
+		for (int j = 0; j < maxDimensionSize; j++)
+			if (i != j) decipherMatrix[i][j] = 0;
+			else decipherMatrix[i][j] = 1;
+
+	//up-tangle
+	for (int k = maxDimensionSize - 1; k> 0; k--) {
+		for (int i = k - 1; i >= 0; i--) {
+			int temp1 = tempMatrix[k][k];
+			int temp2 = tempMatrix[i][k];
+			for (int j = 0; j < maxDimensionSize; j++) {
+				decipherMatrix[i][j] = temp1 * decipherMatrix[i][j] - temp2 * decipherMatrix[k][j];
+				tempMatrix[i][j] = temp1 * tempMatrix[i][j] - temp2 * tempMatrix[k][j];
+			}
+		}
+	}
+	//down-tangle
+	for (int k = 0; k < maxDimensionSize - 1; k++) {
+		for (int i = k + 1; i < maxDimensionSize; i++) {
+			int temp1 = tempMatrix[k][k];
+			int temp2 = tempMatrix[i][k];
+			for (int j = 0; j < maxDimensionSize; j++) {
+				decipherMatrix[i][j] = temp1 * decipherMatrix[i][j] - temp2 * decipherMatrix[k][j];
+				tempMatrix[i][j] = temp1 * tempMatrix[i][j] - temp2 * tempMatrix[k][j];
+			}
+		}
+	}
+	for (int i = 0; i < maxDimensionSize; i++) {
+		int temp = 0;
+		for (int j = 0; j < maxDimensionSize - 1; j++) {
+			temp = Eculid(decipherMatrix[i][j], decipherMatrix[i][j + 1]);
+		}
+		for (int j = 0; j < maxDimensionSize; j++)
+			decipherMatrix[i][j] /= abs(temp);
+	}
+	for (int i = 0; i < maxDimensionSize; i++)
+		for (int j = 0; j < maxDimensionSize; j++)
+			tempMatrix[i][j] = subMatrix[i][j];
+	
+	for (int i = 0; i < maxDimensionSize; i++)
+		delete[] subMatrix[i];
+	delete[] subMatrix;
+}
+
+void HillCipher::ExtendEculid(int x, int y, int &xi, int &yi)
+{
+	if (y == 0) {
+		xi = 0;
+		yi = 1;
+		return;
+	}
+	ExtendEculid(y, x%y, xi, yi);
+	int temp = yi;
+	yi = xi;
+	xi = temp - (x / y)*xi;
+	return;
 }
 /**********************************************/
